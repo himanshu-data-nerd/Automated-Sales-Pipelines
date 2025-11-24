@@ -1,0 +1,6 @@
+product_id,quantity,price,category,total_amount
+101,5,1200,Electronics,6000
+102,2,500,Clothing,1000
+103,1,80000,Electronics,80000
+104,10,50,Grocery,500
+105,1,120000,Electronics,120000

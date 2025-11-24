@@ -1,0 +1,6 @@
+# Ignore the secret vault
+.env
+
+
+# Ignore system junk
+__pycache__

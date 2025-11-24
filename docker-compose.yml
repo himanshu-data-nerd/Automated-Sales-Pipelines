@@ -1,0 +1,93 @@
+version: '3.1'
+
+services:   # List of employees
+  postgresql:  # Emp 1
+    image: bitnami/postgresql:latest
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      - 'postgresql_data:/bitnami/postgresql'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  airflow-init:   # Emp 2
+    build: .
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgresql/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+      - AIRFLOW__WEBSERVER__SECRET_KEY=demo_secret_key_for_local_dev
+    command: >
+      bash -cx '
+      airflow db migrate &&
+      airflow users create -u admin -f admin -l user -r Admin -e admin@example.com -p admin || true
+      '
+
+  airflow-webserver:   # Emp 3
+    build: .
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+      postgresql:
+        condition: service_healthy
+    ports:
+      - '8080:8080'
+    environment:
+      - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgresql/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
+      - AIRFLOW__WEBSERVER__SECRET_KEY=demo_secret_key_for_local_dev
+      - AIRFLOW__SMTP__SMTP_HOST=smtp.gmail.com
+      - AIRFLOW__SMTP__SMTP_STARTTLS=True
+      - AIRFLOW__SMTP__SMTP_SSL=False
+      - AIRFLOW__SMTP__SMTP_USER=priyansh4929@gmail.com
+      - AIRFLOW__SMTP__SMTP_PASSWORD=hdeb xrhb yoba iqzb
+      - AIRFLOW__SMTP__SMTP_PORT=587
+      - AIRFLOW__SMTP__SMTP_MAIL_FROM=priyansh4929@gmail.com
+
+    volumes:
+      - './dags:/opt/airflow/dags'
+      - './data:/opt/airflow/data'
+    command: ["airflow", "webserver"]
+
+  airflow-scheduler:     # Emp 4
+    build: .
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+      postgresql:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__CORE__DAGS_FOLDER=/opt/airflow/dags
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgresql/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=  
+      - AIRFLOW__WEBSERVER__SECRET_KEY=demo_secret_key_for_local_dev
+      - AIRFLOW__SMTP__SMTP_HOST=smtp.gmail.com
+      - AIRFLOW__SMTP__SMTP_STARTTLS=True
+      - AIRFLOW__SMTP__SMTP_SSL=False
+      - AIRFLOW__SMTP__SMTP_USER=${SMTP_EMAIL}
+      - AIRFLOW__SMTP__SMTP_PASSWORD=${SMTP_PASSWORD}
+      - AIRFLOW__SMTP__SMTP_PORT=587
+      - AIRFLOW__SMTP__SMTP_MAIL_FROM=priyansh4929@gmail.com
+
+    volumes:
+      - './dags:/opt/airflow/dags'
+      - './data:/opt/airflow/data'
+    command: ["airflow", "scheduler"]
+
+volumes:
+  postgresql_data:
