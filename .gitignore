@@ -1,6 +1,14 @@
 # Ignore the secret vault
 .env
 
+# Ignore all data...
+data/*
+
+# ...EXCEPT the folder structure
+!data/incoming/
+!data/processed/
+!data/archive/
+!data/**/.gitkeep
 
 # Ignore system junk
 __pycache__
