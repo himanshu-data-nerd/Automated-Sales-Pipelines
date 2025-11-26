@@ -5,7 +5,7 @@
 ![Spark](https://img.shields.io/badge/Apache%20Spark-3.8-orange)
 ![Airflow](https://img.shields.io/badge/Apache%20Airflow-3.1-red)
 
-A robust, scalable, and fault-tolerant **ETL Data Pipeline** designed to simulate a real-world enterprise data platform. This project automates the ingestion, transformation, and archival of sales data using an event-driven architecture.
+A robust and scalable **ETL Data Pipeline** designed to simulate a real-world enterprise data platform. This project automates the ingestion, transformation, and archival of sales data using an event-driven architecture.
 
 ---
 
