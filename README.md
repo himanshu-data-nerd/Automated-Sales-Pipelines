@@ -1,88 +1,249 @@
-# 🚀 Automated Event-Driven Data Platform
+# Automated Sales Pipeline
 
-![Status](https://img.shields.io/badge/Status-Production%20Ready-green)
-![Docker](https://img.shields.io/badge/Docker-Containerized-blue)
-![Spark](https://img.shields.io/badge/Apache%20Spark-3.8-orange)
-![Airflow](https://img.shields.io/badge/Apache%20Airflow-3.1-red)
+An event-driven ETL pipeline that ingests sales CSV files, transforms them with PySpark, archives the raw input, and alerts on failure via Slack.
 
-A robust and scalable **ETL Data Pipeline** designed to simulate a real-world enterprise data platform. This project automates the ingestion, transformation, and archival of sales data using an event-driven architecture.
+Built for local development with **Apache Airflow**, **PySpark**, and **Docker Compose**.
 
 ---
 
-## 🏗️ Architecture Overview
+## What it does
 
-The system follows a **Bronze-Silver-Gold** data lake pattern tailored for high availability and fault tolerance.
+1. **Wait** — Airflow `FileSensor` watches for `data/incoming/sales_data.csv`.
+2. **Transform** — A PySpark job reads the CSV, adds a `total_amount` column (`quantity × price`), and writes output to `data/processed/sales_report/`.
+3. **Archive** — The raw input file is moved to `data/archive/` with a timestamp suffix.
+4. **Alert** — If any task fails, a Slack webhook notification is sent (when configured).
 
-1.  **Ingestion Layer (Sensor):** Airflow `FileSensor` monitors the landing zone (`data/incoming`) for new datasets.
-2.  **Processing Layer (Spark Engine):** Triggers a **PySpark** job running on a custom Docker container (Java 17 + Python) to perform revenue calculations.
-3.  **Storage Layer (Data Lake):**
-    * **Bronze (Archive):** Raw files are timestamped and moved to cold storage for audit trails.
-    * **Silver (Processed):** Cleaned and transformed data is stored for reporting.
-4.  **Observability Layer (Alerting):** Integrated **Slack Webhooks** provide real-time notifications for any pipeline failures (Exit Code 1/2/137).
-
----
-
-## 🛠️ Tech Stack
-
-| Component | Technology | Role |
-| :--- | :--- | :--- |
-| **Orchestration** | Apache Airflow | Scheduling & Dependency Management |
-| **Compute** | Apache Spark | Distributed Data Processing |
-| **Containerization** | Docker / Compose | Environment Isolation |
-| **Language** | Python | Core Logic |
-| **Monitoring** | Slack API | Incident Response System |
-
----
-
-## 🚀 Getting Started
-
-Follow these instructions to deploy the platform on your local machine.
-
-### **1. Prerequisites**
-* Docker Desktop (Running)
-* Git
-
-### **2. Installation**
-
-Clone the repository:
-```bash
-git clone https://github.com/YOUR_USERNAME/automated-sales-pipeline.git
-cd automated-sales-pipeline
+```mermaid
+flowchart LR
+    A[data/incoming/sales_data.csv] --> B[FileSensor]
+    B --> C[PySpark ETL]
+    C --> D[data/processed/sales_report/]
+    C --> E[data/archive/sales_data_*.csv]
+    B -.->|on failure| F[Slack alert]
+    C -.->|on failure| F
+    E -.->|on failure| F
 ```
 
-### **3. Configuration**
-The project uses a secure .env file for credentials.
- - Copy the template:
-  ```bash
-  cp .env.example .env
-  ```
- - Open .env and add your Slack Webhook URL or SMTP Credentials.
-
-### **4. Deployment**
- - Build the custom images and start the cluster:
-  ```bash
-  docker-compose up -d --build
-  ```
- - *Wait for the containers (scheduler, webserver, postgres) to report "Healthy".*
-
-## ⚡ How to Run the Pipeline
-
-1. Access the UI: Go to http://localhost:8080 (User: admin / Pass: admin).
-
-2. Activate DAG: Toggle ON the automated_sales_pipeline.
-
-3. Trigger Event: Drop a CSV file into the ingress folder:
-     Example Command (Windows/Linux)
-     ```bash
-     mv sales_data.csv data/incoming/
-     ```
-4. Observe:
-   * The FileSensor detects the file immediately.
-   * Spark processes the revenue data.
-   * The raw file is moved to data/archive/ with a unique timestamp.
-  
 ---
 
-## 👤 Author
+## Tech stack
 
-**Himanshu** *Aspiring Data Platform Engineer*
+| Component | Version / detail | Role |
+| :--- | :--- | :--- |
+| Orchestration | Apache Airflow 2.8.1 | DAG scheduling and task dependencies |
+| Compute | PySpark (local mode) | CSV transformation |
+| Database | PostgreSQL (Bitnami) | Airflow metadata store |
+| Runtime | Docker Compose | Local multi-container setup |
+| Alerting | Slack incoming webhook | Failure notifications |
+
+---
+
+## Project structure
+
+```
+Automated-Sales-Pipelines/
+├── dags/
+│   ├── send_slack_alert.py   # Airflow DAG (automated_sales_pipeline)
+│   └── process_sales.py      # PySpark transformation script
+├── data/
+│   ├── incoming/             # Drop input CSV here
+│   ├── processed/            # Spark output (CSV parts)
+│   └── archive/              # Timestamped raw files
+├── docker-compose.yml
+├── Dockerfile
+├── .env.example
+└── README.md
+```
+
+---
+
+## Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
+- Git
+
+---
+
+## Setup
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/himanshu-data-nerd/Automated-Sales-Pipelines.git
+cd Automated-Sales-Pipelines
+```
+
+### 2. Configure credentials
+
+Copy the environment template and edit the values:
+
+**Linux / macOS**
+
+```bash
+cp .env.example .env
+```
+
+**Windows (PowerShell)**
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Open `.env` and set the variables described in `.env.example`:
+
+| Variable | Required | Used by | Purpose |
+| :--- | :--- | :--- | :--- |
+| `SLACK_WEBHOOK_URL` | Recommended | Airflow Variable (manual step) | Slack alerts when a DAG task fails |
+| `SMTP_EMAIL` | Optional | `docker-compose.yml` | Airflow built-in email (not used for DAG failure alerts) |
+| `SMTP_PASSWORD` | Optional | `docker-compose.yml` | SMTP password or app password for the email above |
+
+Example `.env` (matches `.env.example`):
+
+```env
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+SMTP_EMAIL=user@example.com
+SMTP_PASSWORD=your_app_password_here
+```
+
+**Slack setup**
+
+1. Create a [Slack incoming webhook](https://api.slack.com/messaging/webhooks).
+2. Paste the URL into `SLACK_WEBHOOK_URL` in your `.env` file.
+3. After the stack is running (step 3 below), register it with Airflow:
+
+```bash
+docker compose exec airflow-webserver airflow variables set slack_webhook_url "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+```
+
+Use the same URL you saved in `.env`. If `slack_webhook_url` is not set in Airflow, the pipeline still runs; the failure callback will error only when a task actually fails.
+
+**SMTP setup**
+
+Leave `SMTP_EMAIL` and `SMTP_PASSWORD` blank unless you want Airflow email features. They are not used for DAG failure alerts in this project.
+
+### 3. Start the stack
+
+```bash
+docker compose up -d --build
+```
+
+Wait until PostgreSQL is healthy and the webserver is up (usually 1–2 minutes):
+
+```bash
+docker compose ps
+```
+
+Open the Airflow UI at [http://localhost:8080](http://localhost:8080).
+
+| Field | Value |
+| :--- | :--- |
+| Username | `admin` |
+| Password | `admin` |
+
+These credentials are created automatically for local development only. Do not use them in production.
+
+---
+
+## Run the pipeline
+
+### 1. Enable the DAG
+
+In the Airflow UI, toggle **ON** the DAG named `automated_sales_pipeline`.
+
+### 2. Prepare input data
+
+The pipeline expects a file named **`sales_data.csv`** with this schema:
+
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| `product_id` | integer | Product identifier |
+| `quantity` | integer | Units sold |
+| `price` | number | Unit price |
+| `category` | string | Product category |
+
+Example:
+
+```csv
+product_id,quantity,price,category
+101,5,1200,Electronics
+102,2,500,Clothing
+```
+
+Create the incoming folder if it does not exist, then place the file:
+
+**Linux / macOS**
+
+```bash
+mkdir -p data/incoming
+cp your_sales_file.csv data/incoming/sales_data.csv
+```
+
+**Windows (PowerShell)**
+
+```powershell
+New-Item -ItemType Directory -Force -Path data\incoming
+Copy-Item your_sales_file.csv data\incoming\sales_data.csv
+```
+
+### 3. Trigger or wait for a run
+
+The DAG is scheduled to run **daily** (`@daily`). You can also trigger a manual run from the Airflow UI (**Trigger DAG**).
+
+The `FileSensor` checks every 30 seconds for up to 1 hour per run. Once the file is found:
+
+- PySpark writes transformed data to `data/processed/sales_report/`
+- The input file is archived under `data/archive/`
+
+### 4. Check output
+
+Processed files appear as Spark CSV parts, for example:
+
+```
+data/processed/sales_report/part-00000-....csv
+```
+
+Each row includes the original columns plus `total_amount`.
+
+---
+
+## DAG tasks
+
+| Task ID | Description |
+| :--- | :--- |
+| `wait_for_incoming_data` | Waits for `sales_data.csv` in `data/incoming/` |
+| `trigger_spark_job` | Runs `dags/process_sales.py` |
+| `archive_processed_file` | Moves the input file to `data/archive/` |
+
+Task order: `wait_for_incoming_data` → `trigger_spark_job` → `archive_processed_file`
+
+---
+
+## Troubleshooting
+
+| Issue | What to check |
+| :--- | :--- |
+| DAG not visible | Confirm `dags/send_slack_alert.py` is mounted and the scheduler container is running |
+| Sensor times out | Ensure the file is named exactly `sales_data.csv` and placed in `data/incoming/` before the sensor timeout (1 hour) |
+| Spark task fails | View logs for `trigger_spark_job` in the Airflow UI |
+| No Slack message | Verify `slack_webhook_url` is set: `docker compose exec airflow-webserver airflow variables list` |
+| Port 8080 in use | Change the host port in `docker-compose.yml` under `airflow-webserver` |
+
+---
+
+## Stop the stack
+
+```bash
+docker compose down
+```
+
+To remove the PostgreSQL volume as well:
+
+```bash
+docker compose down -v
+```
+
+---
+
+## Author
+
+**Himanshu** — Aspiring Data Platform Engineer

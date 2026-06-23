@@ -1,7 +1,9 @@
+# Airflow stack for the automated sales ETL pipeline (local development)
+
 version: '3.1'
 
-services:   # List of employees
-  postgresql:  # Emp 1
+services:
+  postgresql:
     image: bitnami/postgresql:latest
     environment:
       - POSTGRES_USER=airflow
@@ -15,7 +17,7 @@ services:   # List of employees
       timeout: 5s
       retries: 5
 
-  airflow-init:   # Emp 2
+  airflow-init:
     build: .
     depends_on:
       postgresql:
@@ -33,7 +35,7 @@ services:   # List of employees
       airflow users create -u admin -f admin -l user -r Admin -e admin@example.com -p admin || true
       '
 
-  airflow-webserver:   # Emp 3
+  airflow-webserver:
     build: .
     depends_on:
       airflow-init:
@@ -56,13 +58,12 @@ services:   # List of employees
       - AIRFLOW__SMTP__SMTP_PASSWORD=${SMTP_PASSWORD}
       - AIRFLOW__SMTP__SMTP_PORT=587
       - AIRFLOW__SMTP__SMTP_MAIL_FROM=${SMTP_EMAIL}
-
     volumes:
       - './dags:/opt/airflow/dags'
       - './data:/opt/airflow/data'
     command: ["airflow", "webserver"]
 
-  airflow-scheduler:     # Emp 4
+  airflow-scheduler:
     build: .
     depends_on:
       airflow-init:
@@ -74,7 +75,7 @@ services:   # List of employees
       - AIRFLOW__CORE__LOAD_EXAMPLES=False
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgresql/airflow
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__CORE__FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=  
+      - AIRFLOW__CORE__FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
       - AIRFLOW__WEBSERVER__SECRET_KEY=demo_secret_key_for_local_dev
       - AIRFLOW__SMTP__SMTP_HOST=smtp.gmail.com
       - AIRFLOW__SMTP__SMTP_STARTTLS=True
@@ -83,7 +84,6 @@ services:   # List of employees
       - AIRFLOW__SMTP__SMTP_PASSWORD=${SMTP_PASSWORD}
       - AIRFLOW__SMTP__SMTP_PORT=587
       - AIRFLOW__SMTP__SMTP_MAIL_FROM=${SMTP_EMAIL}
-
     volumes:
       - './dags:/opt/airflow/dags'
       - './data:/opt/airflow/data'
